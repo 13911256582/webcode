@@ -58,6 +58,11 @@ li{
         <div>
             <input id='submit' type='button' value='submit'/>
             <input id='run' type='button' value='run'/>
+            <input id='debug' type='button' value='debug'/>
+            <div>
+                <input id='cmd' type='text'/>
+                <input id='send' type='button' value='send'/>
+            </div>
         </div>
     </li>
 
@@ -110,7 +115,7 @@ $("#submit").click(function(){
 
 var code = editor.getValue();
 
-alert(code);
+//alert(code);
 
 objMetrics = {
                   'code': code
@@ -140,6 +145,39 @@ objMetrics = {
     .error(function() { alert(data); });
 
  });
+
+ $("#debug").click(function(){
+
+    $.get("http://127.0.0.1:8000/debug/", {}, function(data){
+        content = '<pre>' + data + '</pre>';
+        $("#console").html(content);
+    })
+    .error(function() { alert(data); });
+
+ });
+
+ $("#send").click(function(){
+
+    var cmd = $("#cmd").val();
+
+    objMetrics = {
+                  'gdb_cmd': cmd
+              };
+
+    $.ajaxSetup({ 
+        async : false 
+    });  
+
+    $.post("http://127.0.0.1:8000/gdb/", objMetrics , function(data){
+
+        content = '<pre>' + data + '</pre>';
+        $("#console").html(content);
+        //window.location.href = "http://127.0.0.1:8000/result" ;
+    })
+    .error(function() { alert(data); });
+
+ });
+
 });
 </script>
 

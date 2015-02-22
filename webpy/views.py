@@ -2,6 +2,12 @@ from django.shortcuts import render_to_response
 from django.http import HttpResponse
 
 import commands
+import os
+import socket
+import sys
+
+
+#global pty_pid, pty_fd
 
 # Create your views here.
 def submit(req):
@@ -25,7 +31,7 @@ def submit(req):
 		#run python code in a command terminal
 		#cmd = 'python' + ' ' + 'sample.py'
 		#print "[python:]", cmd
-		cmd = 'gcc' + ' ' + 'sample.c'
+		cmd = 'gcc -g sample.c'
 
 		try:
 			(status, output) = commands.getstatusoutput(cmd)
@@ -71,7 +77,46 @@ def run(req):
 
 		#print "[python exec result:]", output
 		return HttpResponse(output)
-		
+
+def debug(req):
+
+	global gdb_sock
+
+	if req.method == 'GET':
+		print("debug start")
+		gdb_sock = gdb_connect("localhost", 9999)
+		return HttpResponse("debug start")
+
+def gdb(req):
+
+	if req.method == 'POST':
+		gdb_cmd = req.POST['gdb_cmd']
+
+		print gdb_cmd
+		output = gdb_command(gdb_cmd)
+		return HttpResponse(output)
+
+
+def gdb_connect(HOST, PORT):
+
+	#HOST, PORT = "localhost", 9999
+
+	# Create a socket (SOCK_STREAM means a TCP socket)
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+	sock.connect((HOST, PORT))
+
+	return sock
+
+
+def gdb_command(cmd):
+
+	global gdb_sock
+	#sock = gdb_connect("localhost", 9999)
+
+	gdb_sock.sendall(bytearray(cmd + "\n", "utf-8"))
+	received = str(gdb_sock.recv(1024))
+	return received
 
 
 def index(req):

@@ -1,0 +1,23 @@
+Script started on Sat Feb 21 16:48:29 2015
+]0;shaol@ubuntu: ~/Documents/project/webcodeshaol@ubuntu:~/Documents/project/webcode$ e[Kecho test
+test
+]0;shaol@ubuntu: ~/Documents/project/webcodeshaol@ubuntu:~/Documents/project/webcode$ ls -l
+total 7052
+-rwxrwxr-x 1 shaol shaol    8514 Feb 20 22:38 [0m[01;32ma.out[0m
+drwxrwxr-x 3 shaol shaol    4096 Feb 20 21:34 [01;34mcodemirror[0m
+-rw------- 1 shaol shaol 7151616 Feb 20 23:23 core
+-rw-rw-r-- 1 shaol shaol    3072 Feb 20 21:34 db.sqlite3
+-rwxrwxr-x 1 shaol shaol     250 Feb 20 21:34 [01;32mmanage.py[0m
+-rw-rw-r-- 1 shaol shaol      10 Feb 20 21:34 README.md
+-rwxrwxr-x 1 shaol shaol    9570 Feb 20 21:34 [01;32msample[0m
+-rw-rw-r-- 1 shaol shaol      94 Feb 20 22:38 sample.c
+-rw-rw-r-- 1 shaol shaol     123 Feb 20 21:34 sample.py
+-rw-rw-r-- 1 shaol shaol     703 Feb 21 11:49 tcpclient.py
+-rw-rw-r-- 1 shaol shaol    1219 Feb 20 21:34 tcpserver.py
+-rw-rw-r-- 1 root  root      926 Feb 21 16:48 testpty.py
+-rw-rw-r-- 1 shaol shaol       0 Feb 21 16:48 typescript
+drwxrwxr-x 2 shaol shaol    4096 Feb 20 22:36 [01;34mwebcode[0m
+drwxrwxr-x 5 shaol shaol    4096 Feb 20 22:56 [01;34mwebpy[0m
+]0;shaol@ubuntu: ~/Documents/project/webcodeshaol@ubuntu:~/Documents/project/webcode$ exit
+exit
+Script done on Sat Feb 21 16:48:51 2015
