@@ -1,10 +1,5 @@
-#include <stdio.h>
-
-void main(){
-    int i;
-    for(i=0; i<=10; i++){
-        printf("%d", i)
-    }
-}
-            
+while True:
+	i = input()
+	for x in range(i):
+		print(x)           
         

@@ -15,8 +15,10 @@
 
 
 import socketserver
-import os, time
+import os, time, sys
+import fcntl
 
+import pdb
 
 class MyTCPHandler(socketserver.BaseRequestHandler):
     """
@@ -29,17 +31,16 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
 
-        while True:
-            # self.request is the TCP socket connected to the client
-            self.data = self.request.recv(1024).strip()
-            #self.data = self.rfile.readline().strip()
-            print("{} wrote:".format(self.client_address[0]))
-            print(self.data)
-            # just send back the same data, but upper-cased
+    	global pid, fd
 
-            ret = self.command(self.data)
-
-            self.request.sendall(bytes(ret + "\n", "utf-8"))
+    	# self.request is the TCP socket connected to the client
+    	self.data = self.request.recv(1024)
+    	#self.data = self.rfile.readline().strip()
+    	print("{} wrote:".format(self.client_address[0]))
+    	print(self.data)
+    	# just send back the same data, but upper-cased
+    	ret = self.command(self.data)
+    	self.request.sendall(bytes(ret + "\n", "utf-8"))
 
     def command(self, data):
 
@@ -48,20 +49,35 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         gdb_cmd = data.decode()
         print(gdb_cmd)
 
-        cmd = bytes(gdb_cmd + '\n',"UTF-8")
+        cmd = bytes(gdb_cmd,"UTF-8")
         os.write(fd, cmd)
 
-        time.sleep(0.5)
-            
-        txt = os.read(fd, 65535).decode()
+        time.sleep(0.2)
+        
+        txt = os.read(fd, 65536).decode()
+        #while True:
+        #	time.sleep(0.2)
+        #	try:
+        #		txt = ''
+        #		txt = os.read(fd, 1024)
+
+        #		if txt is None:
+        #			print("read end, break")
+        #			break
+        #		else:
+        #		self.request.sendall(bytes(txt.decode() + "\n", "utf-8"))
+        #	except:
+        #		pass
+        #	if not r.strip():
+        #		break
+        #	else:
+        #		txt = txt + r.decode()
         #lines = txt.splitlines()
         #for line in lines:
         #    if line == '(gdb)':
         #        print(gdb_cmd, line)
         #    else:
         #        parseGDB(gdb_cmd, line)
-
-        print(txt)
         return txt
 
 
@@ -73,15 +89,22 @@ if __name__ == "__main__":
 
     pid, fd = os.forkpty()
 
+
     if pid == 0:
-        print("slave pid, fd", pid, fd)
+    	#print("slave pid, fd", pid, fd)
+
+        #flags = fcntl.fcntl(sys.stdout, fcntl.F_GETFL)
+        #fcntl.fcntl(sys.stdout, fcntl.F_SETFL, flags | os.O_NONBLOCK)
         #subprocess.call(["gdb", "--interpreter=mi"])
         os.execv('/usr/bin/gdb', ['/usr/bin/gdb', '--quiet', '--interpreter=mi2'])
-        #os.execv('/usr/bin/python3', ['usr/bin/python3', 'ptytest.py'])
-        sys.exit(0)
+        #os.execv('/usr/bin/python', ['/usr/bin/python', './sample.py'])
+        #os.execv('./sample', ['./sample'])
+    #    sys.exit(0)
     else :
     
         print("master, child pid is", pid, fd)
+
+        #set fd to async mode
         #flags = fcntl.fcntl(fd, fcntl.F_GETFL)
         #fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 

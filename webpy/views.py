@@ -5,6 +5,7 @@ import commands
 import os
 import socket
 import sys
+from subprocess import Popen, PIPE
 
 
 #global pty_pid, pty_fd
@@ -84,16 +85,25 @@ def debug(req):
 
 	if req.method == 'GET':
 		print("debug start")
-		gdb_sock = gdb_connect("localhost", 9999)
+		#gdb_sock = gdb_connect("localhost", 9999)
 		return HttpResponse("debug start")
 
 def gdb(req):
 
+	global gdb_sock
+
 	if req.method == 'POST':
 		gdb_cmd = req.POST['gdb_cmd']
 
+		# Create a socket (SOCK_STREAM means a TCP socket)
+		gdb_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+		gdb_sock.connect(("localhost", 9999))
+
 		print gdb_cmd
 		output = gdb_command(gdb_cmd)
+
+		gdb_sock.close()
 		return HttpResponse(output)
 
 
@@ -114,8 +124,11 @@ def gdb_command(cmd):
 	global gdb_sock
 	#sock = gdb_connect("localhost", 9999)
 
+	#cmd.rstrip('\n')
+	#cmd = cmd + '\n'
+
 	gdb_sock.sendall(bytearray(cmd + "\n", "utf-8"))
-	received = str(gdb_sock.recv(1024))
+	received = str(gdb_sock.recv(4096))
 	return received
 
 

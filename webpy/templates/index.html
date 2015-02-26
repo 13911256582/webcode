@@ -28,7 +28,18 @@
 
 <style type="text/css">
 #e{font-size: 14px;position:relative;height:500px;width:600px;}
-#console{background: black; font-family: arial; font-size:12px; color: white; position:relative; height:500px;width:600px;}
+#console{background: black; font-family: arial; font-size:12px; color: white; position:relative; height:500px;width:600px;
+overFlow-x:hidden;
+overFlow-y:scroll;
+scrollBar-face-color:green;
+scrollBar-hightLight-color:red;
+scrollBar-3dLight-color:orange;
+scrollBar-darkshadow-color:blue;
+scrollBar-shadow-color:yellow;
+scrollBar-arrow-color:purple;
+scrollBar-track-color:black;
+scrollBar-base-color:pink; }
+
 pre{margin: 0; padding-left: 5px; padding-top: 5px;}
 
 li{
@@ -58,7 +69,11 @@ li{
         <div>
             <input id='submit' type='button' value='submit'/>
             <input id='run' type='button' value='run'/>
-            <input id='debug' type='button' value='debug'/>
+            <input id='debug-load' type='button' value='debug-load'/>
+            <input id='debug-run' type="button" value='debug-run'/>
+            <input id='debug-continue' type="button" value='debug-continue'/>
+            <input id='debug-next' type="button" value='debug-next'/>
+
             <div>
                 <input id='cmd' type='text'/>
                 <input id='send' type='button' value='send'/>
@@ -83,6 +98,8 @@ li{
 
 $(document).ready(function(){
 
+var breakpoints= new Array()
+
 var textarea = document.getElementById('code');
 var editor = CodeMirror.fromTextArea(textarea, {
     matchBrackets: true,
@@ -96,8 +113,19 @@ var editor = CodeMirror.fromTextArea(textarea, {
 
 editor.on("gutterClick", function(cm, n) {
   var info = cm.lineInfo(n);
-  cm.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeMarker());
+
+  if(info.gutterMarkers) {
+    cm.setGutterMarker(n, "breakpoints", null);
+    disableBreakPoint(n)
+  }
+  else{
+    cm.setGutterMarker(n, "breakpoints", makeMarker());
+    enableBreakPoint(n)
+  }
+  
 });
+
+
 
 function makeMarker() {
   var marker = document.createElement("div");
@@ -107,6 +135,11 @@ function makeMarker() {
   return marker;
 }
 
+
+function enableBreakPoint(n){
+    var cmd = '-break-insert ' + file;
+    ret = gdbCommand(cmd);
+}
 
 $("#submit").click(function(){
 
@@ -129,8 +162,9 @@ objMetrics = {
     $.post("http://127.0.0.1:8000/submit/", objMetrics , function(data){
 
 
-        content = '<pre>' + data + '</pre>';
-        $("#console").html(content);
+        //content = '<div><pre>' + data + '</pre></div>';
+        //$("#console").html(content);
+        $("#console").append("<pre>"+data+"</pre>");
         //window.location.href = "http://127.0.0.1:8000/result" ;
     })
     .error(function() { alert(data); });
@@ -139,8 +173,9 @@ objMetrics = {
  $("#run").click(function(){
 
     $.get("http://127.0.0.1:8000/run/", {}, function(data){
-        content = '<pre>' + data + '</pre>';
-        $("#console").html(content);
+        //content = $("#console").val();
+        //content = content + '<pre>' + data + '</pre>';
+        $("#console").append("<pre>"+data+"</pre>");
     })
     .error(function() { alert(data); });
 
@@ -149,11 +184,11 @@ objMetrics = {
  $("#debug").click(function(){
 
     $.get("http://127.0.0.1:8000/debug/", {}, function(data){
-        content = '<pre>' + data + '</pre>';
-        $("#console").html(content);
+        //content = $("#console").val();
+        //content = content + '<pre>' + data + '</pre>';
+        $("#console").append("<pre>"+data+"</pre>");
     })
     .error(function() { alert(data); });
-
  });
 
  $("#send").click(function(){
@@ -170,13 +205,72 @@ objMetrics = {
 
     $.post("http://127.0.0.1:8000/gdb/", objMetrics , function(data){
 
-        content = '<pre>' + data + '</pre>';
-        $("#console").html(content);
+        $("#console").append("<pre>"+data+"</pre>");
+        //content = $("#console").val();
+        //content = content + '<pre>' + data + '</pre>';
+        //$("#console").html(content);
         //window.location.href = "http://127.0.0.1:8000/result" ;
     })
     .error(function() { alert(data); });
 
  });
+
+
+$("#debug-load").click(function(){
+    loadSymbols("a.out");
+ });
+
+$("#debug-run").click(function(){
+    execRun();
+ });
+
+$("#debug-continue").click(function(){
+    execContinue();
+ });
+
+function loadSymbols(file){
+    
+    var cmd = '-file-exec-and-symbols ' + file;
+    ret = gdbCommand(cmd);
+
+}
+
+function enableBreakPoint(n){
+
+    var cmd = "-break-insert " + n;
+    ret = gdbCommand(cmd);
+
+}
+
+function execRun(){
+
+    var cmd = "-exec-run";
+    ret = gdbCommand(cmd);
+}
+
+function execContinue(){
+
+    var cmd = "-exec-continue";
+    gdbCommand(cmd);
+}
+
+
+
+function gdbCommand(gdb_cmd){
+    objMetrics = {
+                  'gdb_cmd': gdb_cmd
+              };
+
+    $.ajaxSetup({ 
+        async : false 
+    });  
+
+    $.post("http://127.0.0.1:8000/gdb/", objMetrics , function(data){
+
+        $("#console").append("<pre>"+data+"</pre>");
+        return data;
+    }).error(function() { alert(data); });
+}
 
 });
 </script>
