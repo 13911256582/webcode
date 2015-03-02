@@ -90,22 +90,50 @@ def debug(req):
 
 def gdb(req):
 
-	global gdb_sock
-
 	if req.method == 'POST':
-		gdb_cmd = req.POST['gdb_cmd']
 
 		# Create a socket (SOCK_STREAM means a TCP socket)
 		gdb_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 		gdb_sock.connect(("localhost", 9999))
 
-		print gdb_cmd
-		output = gdb_command(gdb_cmd)
+		gdb_cmd = 'gdb,' + req.POST['gdb_cmd']
+		output = gdb_command(gdb_sock, gdb_cmd)
 
 		gdb_sock.close()
 		return HttpResponse(output)
 
+
+def tty(req):
+	if req.method == 'GET':
+		#gdb_cmd = req.POST['gdb_cmd']
+
+		# Create a socket (SOCK_STREAM means a TCP socket)
+		gdb_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+		gdb_sock.connect(("localhost", 9999))
+
+		gdb_cmd = 'tty-read,'
+		output = gdb_command(gdb_sock, gdb_cmd)
+
+		print(output)
+
+		gdb_sock.close()
+		return HttpResponse(output)
+
+	elif req.method == 'POST':
+
+		gdb_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+		gdb_sock.connect(("localhost", 9999))
+
+		gdb_cmd = 'tty-write,' + req.POST['console']
+		output = gdb_command(gdb_sock, gdb_cmd)
+
+		gdb_sock.close()
+		return HttpResponse(output)
+	else:
+		pass
 
 def gdb_connect(HOST, PORT):
 
@@ -119,17 +147,13 @@ def gdb_connect(HOST, PORT):
 	return sock
 
 
-def gdb_command(cmd):
+def gdb_command(sock, cmd):
 
-	global gdb_sock
-	#sock = gdb_connect("localhost", 9999)
-
-	#cmd.rstrip('\n')
-	#cmd = cmd + '\n'
-
-	gdb_sock.sendall(bytearray(cmd + "\n", "utf-8"))
-	received = str(gdb_sock.recv(4096))
+	sock.sendall(bytearray(cmd + "\n", "utf-8"))
+	received = str(sock.recv(4096))
 	return received
+
+
 
 
 def index(req):

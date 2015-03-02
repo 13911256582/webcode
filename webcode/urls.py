@@ -15,5 +15,7 @@ urlpatterns = patterns('',
     url(r'^run/', 'webpy.views.run'),
     url(r'^debug/', 'webpy.views.debug'),
     url(r'^gdb/', 'webpy.views.gdb'),
+    url(r'^console/', 'webpy.views.tty'),
+
 
 ) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

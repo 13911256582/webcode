@@ -16,7 +16,9 @@
 
 import socketserver
 import os, time, sys
-import fcntl
+import queue
+import threading
+
 
 import pdb
 
@@ -28,6 +30,22 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     override the handle() method to implement communication to the
     client.
     """
+
+    def tty_read(self, q, fd):
+    	ret = os.read(fd, 65536).decode()
+    	q.put(ret)
+
+
+    def gdb(self, q, fd, data):
+
+    	print(fd, data)
+
+    	os.write(fd, bytes(data,"UTF-8"))
+
+    	time.sleep(0.2)
+    	ret = os.read(fd, 65536).decode()
+
+    	q.put(ret)
 
     def handle(self):
 
@@ -43,42 +61,42 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
     	print(paras)
 
+    	q = queue.Queue()
+
     	if str(paras[0]) == 'gdb':
-    		ret = self.gdb(fd, paras[1])
-    		print(ret)
-    		self.request.sendall(bytes(ret + "\n", "utf-8"))
+    		t= threading.Thread(target=MyTCPHandler.gdb, args=(self, q, fd, paras[1]))
+    		t.daemon = True
+    		t.start()
 
-    	elif str(paras[0]) == 'console':
-    		ret = self.tty(master, paras[1])
-    		print(ret)
-    		self.request.sendall(bytes(ret + "\n", "utf-8"))
+    		#ret = self.gdb(fd, paras[1])
+    		try:
+    			ret = ''
+    			ret = q.get(True, 0.3)  #wait 0.2 second
+    		except:
+    			pass
 
+    		print(ret)
+    		self.request.sendall(bytes(ret, "utf-8"))
+
+    	elif str(paras[0]) == 'tty-read':
+    		t = threading.Thread(target=MyTCPHandler.tty_read, args=(self, q, master))
+    		t.daemon = True
+    		t.start()    		
+    		#ret = os.read(master, 65536).decode()
+
+    		try:
+    			ret = ''
+    			ret = q.get(True, 0.1)  #wait 0.2 second
+    		except:
+    			pass
+
+    		print(ret)
+    		self.request.sendall(bytes(ret, "utf-8"))
+
+    	elif str(paras[0]) == 'tty-write':
+    		os.write(master, bytes(paras[1],"UTF-8"))
     	else:
     		pass
-
-
-    def gdb(self, fd, data):
-
-    	print(fd, data)
-
-    	os.write(fd, bytes(data,"UTF-8"))
-
-    	time.sleep(0.2)
-    	ret = os.read(fd, 65536).decode()
-
-    	return ret
-
-
-    def tty(self, fd, data):
-
-    	print(fd, data)
-
-    	os.write(fd, bytes(data,"UTF-8"))
-
-    	time.sleep(0.2)
-    	ret = os.read(fd, 65536).decode()
-
-    	return ret
 
 
 if __name__ == "__main__":

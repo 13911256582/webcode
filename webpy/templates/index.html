@@ -27,8 +27,20 @@
 
 
 <style type="text/css">
-#e{font-size: 14px;position:relative;height:500px;width:600px;}
-#console{background: black; font-family: arial; font-size:12px; color: white; position:relative; height:500px;width:600px;
+#e{padding: 10px; font-size: 14px;position:relative;height:800px;width:500px;}
+#console{padding: 10px; background: black; font-family: arial; font-size:12px; color: white; position:relative; height:250px;width:500px;
+overFlow-x:hidden;
+overFlow-y:scroll;
+scrollBar-face-color:green;
+scrollBar-hightLight-color:red;
+scrollBar-3dLight-color:orange;
+scrollBar-darkshadow-color:blue;
+scrollBar-shadow-color:yellow;
+scrollBar-arrow-color:purple;
+scrollBar-track-color:black;
+scrollBar-base-color:pink; }
+
+#gdb{padding: 10px; background: black; font-family: arial; font-size:12px; color: white; position:relative; height:250px;width:500px;
 overFlow-x:hidden;
 overFlow-y:scroll;
 scrollBar-face-color:green;
@@ -63,28 +75,42 @@ li{
 <form action='http://127.0.0.1:8000/code/' method="POST">
 <ul>
     <li>
+        <h3>Code Editor</h3>
         <div id="e">
         <textarea id="code"></textarea>
-        </div>    
         <div>
             <input id='submit' type='button' value='submit'/>
             <input id='run' type='button' value='run'/>
-            <input id='debug-load' type='button' value='debug-load'/>
-            <input id='debug-run' type="button" value='debug-run'/>
-            <input id='debug-continue' type="button" value='debug-continue'/>
-            <input id='debug-next' type="button" value='debug-next'/>
-
-            <div>
-                <input id='cmd' type='text'/>
-                <input id='send' type='button' value='send'/>
-            </div>
         </div>
+        </div>    
+
     </li>
 
 
     <li>
+        <h3>Console</h3>
         <div id='console'>
 
+        </div>
+        <div>
+            <input id='console_cmd' type='text'/>
+            <input id='console_send' type='button' value='send'/>
+            <input id='console_read' type='button' value='refresh'/>
+
+        </div>
+
+        <h3>Debug</h3>
+        <div id='gdb'>
+
+        </div>
+        <input id='debug-load' type='button' value='debug-load'/>
+        <input id='debug-run' type="button" value='debug-run'/>
+        <input id='debug-continue' type="button" value='debug-continue'/>
+        <input id='debug-next' type="button" value='debug-next'/>
+
+        <div>
+            <input id='gdb_cmd' type='text'/>
+            <input id='gdb_send' type='button' value='send'/>
         </div>
     </li>
 </ul>
@@ -164,7 +190,7 @@ objMetrics = {
 
         //content = '<div><pre>' + data + '</pre></div>';
         //$("#console").html(content);
-        $("#console").append("<pre>"+data+"</pre>");
+        $("#gdb").append("<pre>"+data+"</pre>");
         //window.location.href = "http://127.0.0.1:8000/result" ;
     })
     .error(function() { alert(data); });
@@ -175,7 +201,7 @@ objMetrics = {
     $.get("http://127.0.0.1:8000/run/", {}, function(data){
         //content = $("#console").val();
         //content = content + '<pre>' + data + '</pre>';
-        $("#console").append("<pre>"+data+"</pre>");
+        $("#gdb").append("<pre>"+data+"</pre>");
     })
     .error(function() { alert(data); });
 
@@ -186,14 +212,14 @@ objMetrics = {
     $.get("http://127.0.0.1:8000/debug/", {}, function(data){
         //content = $("#console").val();
         //content = content + '<pre>' + data + '</pre>';
-        $("#console").append("<pre>"+data+"</pre>");
+        $("#gdb").append("<pre>"+data+"</pre>");
     })
     .error(function() { alert(data); });
  });
 
- $("#send").click(function(){
+ $("#gdb_send").click(function(){
 
-    var cmd = $("#cmd").val();
+    var cmd = $("#gdb_cmd").val();
 
     objMetrics = {
                   'gdb_cmd': cmd
@@ -205,7 +231,7 @@ objMetrics = {
 
     $.post("http://127.0.0.1:8000/gdb/", objMetrics , function(data){
 
-        $("#console").append("<pre>"+data+"</pre>");
+        $("#gdb").append("<pre>"+data+"</pre>");
         //content = $("#console").val();
         //content = content + '<pre>' + data + '</pre>';
         //$("#console").html(content);
@@ -215,6 +241,55 @@ objMetrics = {
 
  });
 
+
+ $("#console_send").click(function(){
+
+    var cmd = $("#console_cmd").val();
+
+    objMetrics = {
+                  'console': cmd
+              };
+
+    $.ajaxSetup({ 
+        async : false 
+    });  
+
+    $.post("http://127.0.0.1:8000/console/", objMetrics , function(data){
+
+        $("#console").append("<pre>"+data+"</pre>");
+        //content = $("#console").val();
+        //content = content + '<pre>' + data + '</pre>';
+        //$("#console").html(content);
+        //window.location.href = "http://127.0.0.1:8000/result" ;
+    })
+    .error(function() { alert(data); });
+
+    $.get("http://127.0.0.1:8000/console/", {}, function(data){
+
+        $("#console").append("<pre>"+data+"</pre>");
+        //content = $("#console").val();
+        //content = content + '<pre>' + data + '</pre>';
+        //$("#console").html(content);
+        //window.location.href = "http://127.0.0.1:8000/result" ;
+    })
+    .error(function() { alert(data); });
+
+
+ });
+
+
+$("#console_read").click(function(){
+
+    $.get("http://127.0.0.1:8000/console/", {}, function(data){
+
+        $("#console").append("<pre>"+data+"</pre>");
+        //content = $("#console").val();
+        //content = content + '<pre>' + data + '</pre>';
+        //$("#console").html(content);
+        //window.location.href = "http://127.0.0.1:8000/result" ;
+    })
+    .error(function() { alert(data); });
+ });
 
 $("#debug-load").click(function(){
     loadSymbols("a.out");
@@ -267,7 +342,7 @@ function gdbCommand(gdb_cmd){
 
     $.post("http://127.0.0.1:8000/gdb/", objMetrics , function(data){
 
-        $("#console").append("<pre>"+data+"</pre>");
+        $("#gdb").append("<pre>"+data+"</pre>");
         return data;
     }).error(function() { alert(data); });
 }
