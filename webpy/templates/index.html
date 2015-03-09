@@ -122,6 +122,53 @@ li{
 
 <script>
 
+var socket;
+
+function websocket(name) {
+    //var $console = $('#console');
+    //var $text = $('#text');
+    var WebSocket = window.WebSocket || window.MozWebSocket;
+    
+    socket = new WebSocket('ws://127.0.0.1:8080/socket'); 
+
+    // 打开Socket 
+    socket.onopen = function(event) { 
+        // 发送一个初始化消息
+        msg = { "content": "hello" };
+        socket.send(JSON.stringify(msg)); 
+
+        // 监听消息
+        socket.onmessage = function(event) { 
+
+            response = JSON.parse(event.data);
+            if(response['source'] == 'gdb'){
+                $('#gdb').append('<pre>' + response['data'] + '</pre>');
+
+            }
+            else{
+                $('#console').append('<div><pre>' + response['data'] + '</pre></div>');
+            }
+        }; 
+        //$('#msg_form').submit(function() {
+        //    socket.send(name + " say: " + $text.val());
+        //    $text.val('').select();
+        //    return false;
+        //});
+
+        // 监听Socket的关闭
+        socket.onclose = function(event) { 
+            //$msg.append('server is close');
+            socket.close() 
+        }; 
+    };
+}
+
+function ws_send(data){
+
+        socket.send(data);
+}
+
+
 $(document).ready(function(){
 
 var breakpoints= new Array()
@@ -136,21 +183,21 @@ var editor = CodeMirror.fromTextArea(textarea, {
     gutters: ["breakpoints","CodeMirror-linenumbers"]
 });
 
+websocket('console');
 
 editor.on("gutterClick", function(cm, n) {
   var info = cm.lineInfo(n);
 
   if(info.gutterMarkers) {
     cm.setGutterMarker(n, "breakpoints", null);
-    disableBreakPoint(n)
+    disableBreakPoint(n + 1)
   }
   else{
     cm.setGutterMarker(n, "breakpoints", makeMarker());
-    enableBreakPoint(n)
+    enableBreakPoint(n + 1)
   }
   
 });
-
 
 
 function makeMarker() {
@@ -163,7 +210,12 @@ function makeMarker() {
 
 
 function enableBreakPoint(n){
-    var cmd = '-break-insert ' + file;
+    var cmd = '-break-insert ' + n;
+    ret = gdbCommand(cmd);
+}
+
+function disableBreakPoint(n){
+    var cmd = '-break-delete ' + n;
     ret = gdbCommand(cmd);
 }
 
@@ -190,7 +242,7 @@ objMetrics = {
 
         //content = '<div><pre>' + data + '</pre></div>';
         //$("#console").html(content);
-        $("#gdb").append("<pre>"+data+"</pre>");
+        $("#console").append("<pre>"+data+"</pre>");
         //window.location.href = "http://127.0.0.1:8000/result" ;
     })
     .error(function() { alert(data); });
@@ -201,43 +253,18 @@ objMetrics = {
     $.get("http://127.0.0.1:8000/run/", {}, function(data){
         //content = $("#console").val();
         //content = content + '<pre>' + data + '</pre>';
-        $("#gdb").append("<pre>"+data+"</pre>");
+        $("#console").append("<pre>"+data+"</pre>");
     })
     .error(function() { alert(data); });
 
  });
 
- $("#debug").click(function(){
-
-    $.get("http://127.0.0.1:8000/debug/", {}, function(data){
-        //content = $("#console").val();
-        //content = content + '<pre>' + data + '</pre>';
-        $("#gdb").append("<pre>"+data+"</pre>");
-    })
-    .error(function() { alert(data); });
- });
 
  $("#gdb_send").click(function(){
 
     var cmd = $("#gdb_cmd").val();
 
-    objMetrics = {
-                  'gdb_cmd': cmd
-              };
-
-    $.ajaxSetup({ 
-        async : false 
-    });  
-
-    $.post("http://127.0.0.1:8000/gdb/", objMetrics , function(data){
-
-        $("#gdb").append("<pre>"+data+"</pre>");
-        //content = $("#console").val();
-        //content = content + '<pre>' + data + '</pre>';
-        //$("#console").html(content);
-        //window.location.href = "http://127.0.0.1:8000/result" ;
-    })
-    .error(function() { alert(data); });
+    ret = gdbCommand(cmd);
 
  });
 
@@ -246,15 +273,26 @@ objMetrics = {
 
     var cmd = $("#console_cmd").val();
 
-    objMetrics = {
-                  'console': cmd
-              };
+    consoleCommand('write', cmd);
+
+    //ajax_console_send(json_cmd);
+ 
+});
+
+
+$('#console_read').click(function(){
+
+    consoleCommand('async_read', '');
+
+});
+
+function ajax_console_send(request){
 
     $.ajaxSetup({ 
         async : false 
     });  
 
-    $.post("http://127.0.0.1:8000/console/", objMetrics , function(data){
+    $.post("http://127.0.0.1:8000/console/", request , function(data){
 
         $("#console").append("<pre>"+data+"</pre>");
         //content = $("#console").val();
@@ -274,12 +312,9 @@ objMetrics = {
     })
     .error(function() { alert(data); });
 
+}
 
- });
-
-
-$("#console_read").click(function(){
-
+function ajax_console_read(){
     $.get("http://127.0.0.1:8000/console/", {}, function(data){
 
         $("#console").append("<pre>"+data+"</pre>");
@@ -289,7 +324,9 @@ $("#console_read").click(function(){
         //window.location.href = "http://127.0.0.1:8000/result" ;
     })
     .error(function() { alert(data); });
- });
+}
+
+
 
 $("#debug-load").click(function(){
     loadSymbols("a.out");
@@ -302,6 +339,10 @@ $("#debug-run").click(function(){
 $("#debug-continue").click(function(){
     execContinue();
  });
+
+
+
+
 
 function loadSymbols(file){
     
@@ -331,16 +372,41 @@ function execContinue(){
 
 
 
-function gdbCommand(gdb_cmd){
-    objMetrics = {
-                  'gdb_cmd': gdb_cmd
-              };
+function gdbCommand(cmd){
+
+    var req = { 'gdb_cmd': cmd };
+
+    var json_cmd = { 
+
+        'source': 'gdb',
+        'action': '',
+        'data': cmd 
+    };
+
+    ws_send(JSON.stringify(json_cmd));
+    //ajax_gdbCommand(req);
+
+}
+
+
+function consoleCommand(action, cmd){
+    var json_cmd = { 
+
+        'source': 'console',
+        'action': action,
+        'data': cmd 
+    };
+
+    ws_send(JSON.stringify(json_cmd));
+}
+
+function ajax_gdbCommand(gdb_cmd){
 
     $.ajaxSetup({ 
         async : false 
     });  
 
-    $.post("http://127.0.0.1:8000/gdb/", objMetrics , function(data){
+    $.post("http://127.0.0.1:8080/post", gdb_cmd , function(data){
 
         $("#gdb").append("<pre>"+data+"</pre>");
         return data;
@@ -349,6 +415,8 @@ function gdbCommand(gdb_cmd){
 
 });
 </script>
+
+
 
 
 </body>

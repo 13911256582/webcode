@@ -158,3 +158,7 @@ def gdb_command(sock, cmd):
 
 def index(req):
 	return render_to_response('index.html', {})
+
+
+def websocks(req):
+	return render_to_response('websocks.html', {})

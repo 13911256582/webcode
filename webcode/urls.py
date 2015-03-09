@@ -16,6 +16,7 @@ urlpatterns = patterns('',
     url(r'^debug/', 'webpy.views.debug'),
     url(r'^gdb/', 'webpy.views.gdb'),
     url(r'^console/', 'webpy.views.tty'),
+    url(r'^websocks/', 'webpy.views.websocks'),
 
 
 ) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

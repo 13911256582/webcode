@@ -14,15 +14,56 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import socketserver
+import SocketServer
 import os, time, sys
-import queue
+import Queue
 import threading
+import json
+import urllib
+import httplib
+#import http.client
 
 
 import pdb
 
-class MyTCPHandler(socketserver.BaseRequestHandler):
+class AsyncReadServer(object):
+
+    def init(self, gdb_fd, target_fd):
+        self.gdb_fd = gdb_fd
+        self.target_fd = target_fd
+
+        #create gdb read thread
+        self.gdb_t = threading.Thread(target=self.async_read, args=("gdb", self.gdb_fd))
+        self.gdb_t.daemon = True
+        self.gdb_t.start()
+
+        #create target read thread
+
+        self.target_t = threading.Thread(target=self.async_read, args=("console", self.target_fd))
+        self.target_t.daemon = True
+        self.target_t.start()
+
+    def async_read(self, source, fd):
+
+        while True:
+            ret = os.read(fd, 65536).decode()
+            print(source, ret)
+            self.post(source, ret)
+
+    def post(self, source, data):
+        params = {  'source': source,
+                    'data': data
+        }
+
+        #headers = { "Content-Type": "application/json",}
+
+        headers = {"Content-Type":"text/html", "Connection":"close"}
+
+        httpClient = httplib.HTTPConnection("127.0.0.1:8080")
+        httpClient.request("POST", "/post", json.dumps(params), headers)
+
+
+class MyTCPHandler(SocketServer.BaseRequestHandler):
     """
     The RequestHandler class for our server.
 
@@ -31,76 +72,101 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     client.
     """
 
-    def tty_read(self, q, fd):
-    	ret = os.read(fd, 65536).decode()
-    	q.put(ret)
+    global fd, master
+
+    def handle_request(self, response):
+        if response.error:
+            print "Error:", response.error
+        else:
+            print response.body
 
 
-    def gdb(self, q, fd, data):
+        #response = httpClient.getresponse()
 
-    	print(fd, data)
 
-    	os.write(fd, bytes(data,"UTF-8"))
+    #def tty_read(self, q, fd):
 
-    	time.sleep(0.2)
-    	ret = os.read(fd, 65536).decode()
+    #    while True:
+    #        ret = os.read(fd, 65536).decode()
+    #        print("console:", ret)
+    #        self.post('console', ret)
+    	#q.put(ret)
 
-    	q.put(ret)
+
+    #def gdb_read(self, q, fd):
+
+    #    while True:
+    #        ret = os.read(fd, 65536).decode()
+    #        print("gdb:", ret)
+    #        self.post('gdb', ret) 
+
+    	#q.put(ret)
+
+
 
     def handle(self):
 
-    	global pid, fd, master, slave
-
     	# self.request is the TCP socket connected to the client
-    	self.data = self.request.recv(1024)
-    	#self.data = self.rfile.readline().strip()
-    	print("{} wrote:".format(self.client_address[0]))
-    	print(self.data)
+        self.data = self.request.recv(1024)
+        
+        print("{} wrote:".format(self.client_address[0]))
+        print(self.data)
+        
 
-    	paras = self.data.decode().split(',', 1)
+        #q = Queue.Queue()
+        #paras = self.data.decode().split(',', 1)
+        req = json.loads(self.data.decode())
 
-    	print(paras)
+        if req['source'] == 'gdb':
+            
+            os.write(fd, bytearray(req['data'] + "\n","UTF-8"))
+            
+            #ret = self.gdb(fd, paras[1])
+            #try:
+            #    ret = ''
+            #    ret = q.get(True, 0.3)  #wait 0.2 second
+            #except:
+            #    pass
 
-    	q = queue.Queue()
+            #print(ret)
+            #self.request.sendall(bytearray(ret, "utf-8"))
 
-    	if str(paras[0]) == 'gdb':
-    		t= threading.Thread(target=MyTCPHandler.gdb, args=(self, q, fd, paras[1]))
-    		t.daemon = True
-    		t.start()
+                    
 
-    		#ret = self.gdb(fd, paras[1])
-    		try:
-    			ret = ''
-    			ret = q.get(True, 0.3)  #wait 0.2 second
-    		except:
-    			pass
+        elif req['source'] == 'console':
 
-    		print(ret)
-    		self.request.sendall(bytes(ret, "utf-8"))
+            if req['action'] == 'write':
+                os.write(master, bytearray(req['data'],"UTF-8"))
 
-    	elif str(paras[0]) == 'tty-read':
-    		t = threading.Thread(target=MyTCPHandler.tty_read, args=(self, q, master))
-    		t.daemon = True
-    		t.start()    		
-    		#ret = os.read(master, 65536).decode()
+            #elif req['action'] == 'async_read':
+            #    t = threading.Thread(target=MyTCPHandler.tty_read, args=(self, q, master))
+            #    t.daemon = True
+            #    t.start()    		
+                
+                #try:
+                #    ret = ''
+                #    ret = q.get(True, 0.1)  #wait 0.2 second
+                #except:
+                #    pass
 
-    		try:
-    			ret = ''
-    			ret = q.get(True, 0.1)  #wait 0.2 second
-    		except:
-    			pass
+                #print(ret)
+                #self.request.sendall(bytearray(ret, "utf-8"))
+                #self.post('console', ret)
+            
+            elif req['action'] == 'sync_read':
+                ret = os.read(master, 65536).decode()
+                print(ret)
+                self.request.sendall(bytearray(ret, "utf-8"))
+            else:
+                pass
+        else:
+            pass
 
-    		print(ret)
-    		self.request.sendall(bytes(ret, "utf-8"))
 
-    	elif str(paras[0]) == 'tty-write':
-    		os.write(master, bytes(paras[1],"UTF-8"))
-    	else:
-    		pass
 
 
 if __name__ == "__main__":
-    
+
     global pid, fd, master, slave
 
     HOST, PORT = "localhost", 9999
@@ -123,19 +189,20 @@ if __name__ == "__main__":
         #subprocess.call(["gdb", "--interpreter=mi"])
         #os.execv('/usr/bin/gdb', ['/usr/bin/gdb', 'a.out', '--quiet', '--interpreter=mi2', '--tty=' + os.ttyname(slave)])
         os.execv('/usr/bin/gdb', ['/usr/bin/gdb', 'a.out', '--quiet', '--interpreter=mi2'])
-        #os.execv('/usr/bin/python', ['/usr/bin/python', './sample.py'])
+        #os.execv('/bin/sh', ['/bin/sh'])
         #os.execv('./sample', ['./sample'])
     #    sys.exit(0)
     else :
-    
-        print("master, child pid is", pid, fd)
 
         #set fd to async mode
         #flags = fcntl.fcntl(fd, fcntl.F_GETFL)
         #fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
         # Create the server, binding to localhost on port 9999
-        server = socketserver.TCPServer((HOST, PORT), MyTCPHandler)
+        server = SocketServer.TCPServer((HOST, PORT), MyTCPHandler)
+
+        async_reader = AsyncReadServer()
+        async_reader.init(fd, master)
 
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
