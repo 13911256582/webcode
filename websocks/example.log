@@ -1,0 +1,4 @@
+DEBUG:root:This message should go to the log file
+INFO:root:So should this
+DEBUG:root:check orgin true
+DEBUG:root:open socket

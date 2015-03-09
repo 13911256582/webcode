@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>chat demo</title>
+</head>
+    <script src=""></script>
+    <script src=""></script>
+<script>
+function test(ts) {
+    $("#name_form").hide()
+    $("#msg_form").show()
+    websocket($("#name").val())
+    return false
+}
+</script>
+<body>
+    <p id="name_form">name:<input id="name"></input> <input type="button" onclick="test()" value="进入"></p>
+    <form style="display:none" id="msg_form" action="/socket" method="post">
+        <textarea id="text"></textarea>
+        <input type="submit" value="发言"/>
+    </form>
+    <div id="msg"></div>
+
+</body>
+
+<script>
+function websocket(name) {
+    var $msg = $('#msg');
+    var $text = $('#text');
+    var WebSocket = window.WebSocket || window.MozWebSocket;
+    var socket = new WebSocket('ws://127.0.0.1:8080/socket'); 
+
+    // 打开Socket 
+    socket.onopen = function(event) { 
+        // 发送一个初始化消息
+        socket.send('I am ' + name + ' I come here!'); 
+
+        // 监听消息
+        socket.onmessage = function(event) { 
+            $msg.append('
+
+' + event.data + '
+');
+        }; 
+        $('#msg_form').submit(function() {
+            socket.send(name + " say: " + $text.val());
+            $text.val('').select();
+            return false;
+        });
+
+        // 监听Socket的关闭
+        socket.onclose = function(event) { 
+            $msg.append('server is close');
+            socket.close() 
+        }; 
+    };
+}
+</script>
+</html>
