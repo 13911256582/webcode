@@ -33,17 +33,24 @@ class AsyncReadServer(object):
         self.target_fd = target_fd
 
         #create gdb read thread
-        self.gdb_t = threading.Thread(target=self.async_read, args=("gdb", self.gdb_fd))
+        self.gdb_t = threading.Thread(target=self.async_gdb_read, args=("gdb", self.gdb_fd))
         self.gdb_t.daemon = True
         self.gdb_t.start()
 
         #create target read thread
 
-        self.target_t = threading.Thread(target=self.async_read, args=("console", self.target_fd))
+        self.target_t = threading.Thread(target=self.async_console_read, args=("console", self.target_fd))
         self.target_t.daemon = True
         self.target_t.start()
 
-    def async_read(self, source, fd):
+    def async_gdb_read(self, source, fd):
+
+        while True:
+            ret = os.read(fd, 65536).decode()
+            print(source, ret)
+            self.post(source, ret)
+
+    def async_console_read(self, source, fd):
 
         while True:
             ret = os.read(fd, 65536).decode()
@@ -136,7 +143,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         elif req['source'] == 'console':
 
             if req['action'] == 'write':
-                os.write(master, bytearray(req['data'],"UTF-8"))
+                os.write(master, bytearray(req['data'] + "\n","UTF-8"))
 
             #elif req['action'] == 'async_read':
             #    t = threading.Thread(target=MyTCPHandler.tty_read, args=(self, q, master))
