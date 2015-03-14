@@ -1,14 +1,11 @@
 #include <stdio.h>
 
 void main(){
-  int i, x;
+  int i;
   
-  printf("input:");
-  scanf("%d", &x);
+  printf("hello\n");
   
-  for(i=0; i<x; i++){
+  for(i=0; i<10; i++){
     printf("%d", i);
   }
-  
-  printf("\n");
 }

@@ -195,8 +195,8 @@ if __name__ == "__main__":
         #fcntl.fcntl(sys.stdout, fcntl.F_SETFL, flags | os.O_NONBLOCK)
         #subprocess.call(["gdb", "--interpreter=mi"])
         #os.execv('/usr/bin/gdb', ['/usr/bin/gdb', 'a.out', '--quiet', '--interpreter=mi2', '--tty=' + os.ttyname(slave)])
-        os.execv('/usr/bin/gdb', ['/usr/bin/gdb', 'a.out', '--quiet', '--interpreter=mi2'])
-        #os.execv('/bin/sh', ['/bin/sh'])
+        #os.execv('/usr/bin/gdb', ['/usr/bin/gdb', 'a.out', '--quiet', '--interpreter=mi2'])
+        os.execv('/bin/sh', ['/bin/sh'])
         #os.execv('./sample', ['./sample'])
     #    sys.exit(0)
     else :
