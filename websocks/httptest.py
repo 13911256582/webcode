@@ -16,6 +16,7 @@ import json
 import pdb
 
 
+
 def send_message_ws(message):
     for handler in CodeSocketHandler.socket_handlers:
         try:
@@ -75,6 +76,7 @@ class CodePollHandler(tornado.web.RequestHandler):
                     'data': req['data']
                 }
 
+        print(message)
         send_message_lp(message)
 
 

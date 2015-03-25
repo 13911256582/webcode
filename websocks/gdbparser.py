@@ -12,141 +12,220 @@ import pdb
 out_of_band = ('*', '+', '=')
 stream_output = ('~', '@', '&')
 result_class = ('^done', '^running', '^connected', '^error', '^exit')
-char_set = ('{', '}', '[', ']')
+status_class = ('*running', '*stopped')
 
 
 class GdbParser(object):
 
-	def gdbParse(self, lines, cmd):
+	def __init__(self):
+		self.gdb_type = ''
+		self.gdb_result = ''
+		self.gdb_status = ''
+		self.gdb_data = ''
+		self.gdb_out_of_band = ''
+		self.gdb_details = ''
+
+	def gdbParse(self, lines):
+
+		print("parse in >>>> ")
+		print(lines)
+
 		lines = lines.splitlines()
+		response = []
 
 		for i in lines:
-			gdbParseLine(i)
+			item = {}
+			self.gdb_type = ''
+			self.gdb_result = ''
+			self.gdb_status = ''
+			self.gdb_data = ''
+			self.gdb_out_of_band = ''
+
+			self.gdbParseLine(i)
+
+			if self.gdb_type == 'skip':
+				continue
+			
+			item['type'] = self.gdb_type
+
+			if self.gdb_data:
+				item['data'] = json.loads('{' + self.gdb_data + '}')
+			else:
+				item['data'] = ''
+
+			if self.gdb_result:
+				item['details'] = self.gdb_result
+			elif self.gdb_status:
+				item['details'] = self.gdb_status
+			elif self.gdb_out_of_band:
+				item['details'] = self.gdb_out_of_band
+			else:
+				item['details'] = self.gdb_details
 
 
-	def gdbOutOfBand(self, lines, cmd):
-		pass
 
+			response.append(item)
+			#response = item
 
-	def gdbParseLine(self, line, cmd):
-		
+		print("parse out <<<< ")
+		print(response)
+
+		return response
+
+	def gdbParseLine(self, line):
+		#print('input line:', line)
+
+		line = line.lstrip()
+		if len(line) == 0:
+			self.gdb_type = 'skip'
+			return
+
+		if line.rstrip() == '(gdb)':
+			self.gdb_type = 'complete'
+			self.gdb_details = '(gdb)'
+			return
+		#handle cases with no parameters
+		if line in result_class:
+			self.gdb_type = 'result'
+			self.gdb_result = line[1:]
+			return
+
+		if line in status_class:
+			self.gdb_type = 'status'
+			self.gdb_status = line[1:]
+			return
+
+		if line[0] in stream_output:
+			self.gdb_type = 'stream'
+			self.gdb_details = line[1:]
+			return
+
+		if line[0] == '=':
+			#this is out of band response, we don't process out of band message
+			self.gdb_type = "out_of_band"
+			self.gdbParseNotification(line)
+			return		
 
 		if line[0] == '^':
-			gdbParseResultRecord(line,cmd)
-		elif line[0] in out_of_band:
-			if line[0] == '*':
-				gdbParseExecAsyncOutput(line, cmd)
-			elif line[0] == '=':
-				return
-			elif line[0] == '+':
-				return
-			else:
-				pass
-		elif line[0] in stream_output:
+			self.gdb_type = 'result'
+			self.gdbParseResult(line)
+				#print(self.gdb_data)
 			return
-		#elif:
-			#match (gdb)
-		#	rs = re.match(r'\b(gdb)', line)
-		#	if rs:
-		#		self.gdb_status = 'waiting'
-		#	else:
-		#		raise "gdb line parse error"
 
+		if line[0] == '*':
+			self.gdb_type = 'status'
+			self.gdbParseStatus(line)
+			return
+		
+		self.gdb_type = 'others'
+		self.gdb_details = line
+
+	def gdbParseNotification(self, line):
+		words = line.split(',', 1)
+
+		self.gdb_out_of_band = words[0][1:]
+		self.gdb_data = self.parse(words[1])
+
+				
+	def gdbParseStatus(self, line):
+		words = line.split(',' , 1)
+
+		if words[0] in status_class:
+			if words[0] == '*running':
+				self.gdb_status = 'running'
+				self.gdb_data = self.parse(words[1])
+
+			elif words[0] == '*stopped':
+				self.gdb_status = 'stopped'
+				self.gdb_data = self.parse(words[1])	
 		else:
-			raise "gdb line parse error"
+			raise "gdb status class error"	
 
-	def gdbParseExecAsyncOutput(self, line, cmd):
-		pass
 
-	def gdbParseResultRecord(self, line, cmd):
+	def gdbParseResult(self, line):
 
 		words = line.split(',' , 1)
 
 		if words[0] in result_class:
 			if words[0] == '^done':
-				gdbParseDone(words[1])
+				self.gdb_result = 'done'
+				self.gdb_data = self.parse(words[1])
 
 			elif words[0] == '^error':
-				gdbParseError(word[1], cmd)
+				self.gdb_result = 'error'
+				self.gdb_data = self.parse(words[1])
 			
 			elif words[0] == '^running':
-				self.gdb_status = 'running'
+				self.gdb_result = 'running'
+				self.gdb_data = self.parse(words[1])
 				
 		else:
 			raise "gdb result class error"
 
-	def gdbParseDone(self, line):
-		rs = re.match(r'\bbkpt={.*}', line)
-
-
-	def lineParser(self, line):
-		output = {}
-
-		#rule_a = re.compile(r'{.*}')
-		#rule_b = re.compile(r'\[.*\]')
-
+	def parse(self, line):
+		delimited = ['{', '}', ',', '[', ']']
 		remaining = line
-		print("remaining:", remaining)
-		print("\n")
+		output = ''
+		bracketFlag = 0
 
 		while len(remaining) > 0:
+			if remaining[0] in delimited:
+				output = output + remaining[0]
+				if remaining[0] == '[':
+					remaining = remaining[1:]
+					#need to handle bracket carefully
+					bracketFlag = bracketFlag + 1
 
-			words = remaining.split('=', 1)
-			key = words[0]
-			remaining = words[1]
+					if remaining[0] == '"':
+						while True:
+							match = re.search(r'\".*?\"', remaining)
+							if match:
+								output = output + remaining[:match.end()]
+								remaining = remaining[match.end():]
+								if remaining[0] == ']':
+									bracketFlag = bracketFlag - 1
+									output = output + ']'
+									remaining = remaining[1:]
+									break
+					else:
+						continue
 
-			if remaining[0] == '{':
-				match = re.search(r'{.*}', remaining)
-				af_match = remaining[match.end():]
-
-				res = self.parseObject(match.group(0).strip('\{').strip('\}'))
-				output[key] = res
-				remaining = af_match.lstrip(',')
-
-			elif remaining[0] == '[':
-				match = re.search(r'\[.*\]', remaining)
-				af_match = remaining[match.end():]
-
-				res = self.parseArray(match.group(0).strip('\[').strip('\]'))
-				output[key] = res
-				remaining = af_match.lstrip(',')
-
-			else:
-				words = remaining.split(',', 1)
-				if len(words) == 1:
-					output[key] = words[0].strip('\"').strip('\"')
-					remaining = ''
+				elif remaining[0] == ']':
+					bracketFlag = bracketFlag - 1
+					remaining = remaining[1:]
 				else:
-					output[key] = words[0].strip('\"').strip('\"')
-					remaining = words[1]
+					remaining = remaining[1:]
+    			
+			else:
+				match = re.search(r'=', remaining)
+				if match:
+					#to check the corner case in bracket mode
+					if remaining[match.end()] == '{' and bracketFlag > 0:
+						remaining = remaining[match.end():]
+						continue
+					else:
+						key = remaining[:match.start()]
+						output = output + '"' + key + '"' + ':'
+						remaining = remaining[match.end():]
 
+						if remaining[0] == '"':
+							match = re.search(r'\".*?\"', remaining)
+							output = output + remaining[:match.end()]
+							remaining = remaining[match.end():]
+							continue
+				else:
+					break
 		return output
-
-	def parseObject(self, line):
-		return self.lineParser(line)	
-
-	def parseArray(self, line):
-		output = []
-
-		words = line.split(',')
-
-		for word in words:
-			output.append(word.strip('\"').strip('\"'))
-
-		return output
-
-	def no():
-		pass
-
-
 
 
 if __name__ == "__main__":
-	test_string = 'bkpt={number="1",type="breakpoint",disp="keep",enabled="y",addr="0x0000000000400535",func="main",file="sample.c",fullname="/home/shaol/Documents/project/webcode/sample.c",line="6",thread-groups=["i1"],times="0",original-location="/home/shaol/Documents/project/webcode/sample.c:6"}'
-	gdbParse = GdbParser()
-	output = gdbParse.lineParser(test_string)
+	test_string = '''^done,bkpt={number="1",type="breakpoint",disp="keep",enabled="y",addr="0x000000000040058f",func="main",file="sample.c",fullname="/home/shaol/Documents/project/webcode/sample.c",line="8",thread-groups=["i1"],times="0",original-location="/home/shaol/Documents/project/webcode/sample.c:8"}
+'''
 
-	print(output)
-	print(json.dumps(output))
+	gdbParse = GdbParser()
+	output = gdbParse.gdbParse(test_string)
+
+	#print(output)
+	#print(json.dumps(output))
 
 

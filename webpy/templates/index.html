@@ -29,7 +29,7 @@
 <style type="text/css">
 #e{padding: 10px; font-size: 14px;position:relative;height:800px;width:500px;}
 #console{padding: 10px; background: black; font-family: arial; font-size:12px; color: white; position:relative; height:250px;width:500px;
-overFlow-x:hidden;
+overFlow-x:scroll;
 overFlow-y:scroll;
 scrollBar-face-color:green;
 scrollBar-hightLight-color:red;
@@ -41,7 +41,7 @@ scrollBar-track-color:black;
 scrollBar-base-color:pink; }
 
 #gdb{padding: 10px; background: black; font-family: arial; font-size:12px; color: white; position:relative; height:250px;width:500px;
-overFlow-x:hidden;
+overFlow-x:scroll;
 overFlow-y:scroll;
 scrollBar-face-color:green;
 scrollBar-hightLight-color:red;
@@ -142,7 +142,17 @@ function websocket(name) {
 
             response = JSON.parse(event.data);
             if(response['source'] == 'gdb'){
-                $('#gdb').append('<pre>' + response['data'] + '</pre>');
+                //data = JSON.parse(response['data'])
+                for(i in response['data']){
+                    type = response['data'][i]['type']
+                    details = response['data'][i]['details']
+                    data = response['data'][i]['data']
+                    $('#gdb').append('<pre>' + 'type:' + type + '</pre>');
+                    $('#gdb').append('<pre>' + 'details:' + details + '</pre>');
+                    $('#gdb').append('<pre>' + 'data:' + JSON.stringify(data) + '</pre>');
+                    //$('#gdb').append('<pre>' + data + '</pre>');
+                }
+                
 
             }
             else{
@@ -341,7 +351,7 @@ $("#debug-continue").click(function(){
  });
 
 
-
+var breakpoints = {}
 
 
 function loadSymbols(file){
